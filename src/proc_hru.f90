@@ -8,13 +8,14 @@
       use landuse_data_module
       use erosion_module
       use output_path_module
-      
+      use isotope_module
+
       implicit none
-      
+
       external :: carbon_read, cn2_init_all, hru_allo, hru_lum_init_all, hru_output_allo, hru_read, &
                   hrudb_init, hydro_init, plant_all_init, rte_read_nut, soils_init, structure_init, &
                   structure_set_parms, topohyd_init, cli_lapse, dr_ru, lsu_read_elements, unit_hyd_ru_hru, &
-                  pesticide_init, pathogen_init, salt_hru_init, cs_hru_init
+                  pesticide_init, pathogen_init, salt_hru_init, cs_hru_init, iso_init
       
       integer :: j = 0          !none       |counter
       integer :: ilum = 0       !none       |counter
@@ -46,6 +47,7 @@
         if (cs_db%num_paths > 0) call pathogen_init
         if (cs_db%num_salts > 0) call salt_hru_init !rtb salt
         if (cs_db%num_cs > 0) call cs_hru_init !rtb cs
+        call iso_init  !stable water isotope initialization
         
       !! allocate erosion output and open file
       allocate (ero_output(sp_ob%hru))

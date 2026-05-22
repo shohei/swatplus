@@ -37,10 +37,11 @@
       use cs_module !rtb cs
       use gwflow_module !rtb gwflow
 	    use tillage_data_module
+      use isotope_module !isotope tracking
       !use basin_module, only : bsn_cc
-      
+
       implicit none
-      
+
       external :: actions, albedo, cbn_rsd_decomp, cbn_zhang2, conditions, cs_lch, cs_rain, cs_rctn_hru, &
                   cs_sorb_hru, et_act, et_pot, hru_hyds, hru_urb_bmp, hru_urban, hru_urbanhr, nut_nitvol, &
                   nut_nlch, nut_nminrl, nut_nrain, nut_orgn, nut_orgnc, nut_orgnc2, nut_pminrl, &
@@ -51,7 +52,8 @@
                   smp_grass_wway, sq_canopyint, sq_snom, sq_surfst, stmp_solt, stor_surfstor, surface, &
                   swr_latsed, swr_percmain, swr_substor, swr_subwq, varinit, wet_irrp, wetland_control, &
                   sq_crackvol, mgt_operatn, mgt_newtillmix, sep_biozone, pest_washp, pest_pesty, smp_buffer, &
-                  mgt_newtillmix_cswat3, cbn_surfrsd_decomp, cbn_rsd_transfer, mgt_biomix
+                  mgt_newtillmix_cswat3, cbn_surfrsd_decomp, cbn_rsd_transfer, mgt_biomix,              &
+                  iso_rain, iso_lch, iso_frac, iso_hydsep  !isotope tracking
 
       integer :: j = 0              !none          |same as ihru (hru number)
       integer :: j1 = 0             !none          |counter (rtb)
@@ -577,7 +579,17 @@
           endif
           call cs_lch
         endif
-        
+
+        !isotope tracking (stable water isotopes: delta-18O, delta-D)
+        if (iso_on == 1) then
+          if (iso_atmo == "y") then
+            call iso_rain    !mix precipitation delta into soil layer 1
+          end if
+          call iso_lch       !transport delta through soil layers
+          call iso_frac      !evaporative fractionation of soil layer 1
+          call iso_hydsep    !hydrograph separation diagnostics
+        end if
+
         !! compute pathogen transport
         if (cs_db%num_paths > 0.) then
           call path_ls_swrouting
