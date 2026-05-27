@@ -40,8 +40,32 @@
       character(len=80) :: titldum = " "
       logical :: i_exist
 
-      !! nothing to do if isotopes are off
-      if (iso_on == 0) return
+      !! check if precip.iso exists; no file means isotopes are disabled
+      inquire (file="precip.iso", exist=i_exist)
+      if (.not. i_exist) then
+        write (*,'(a)') "  Isotope tracking: disabled (precip.iso not found)"
+        write (9003,'(a)') "  Isotope tracking: disabled (precip.iso not found)"
+        return
+      end if
+
+      !! read header and global parameters from precip.iso
+      open (unit=119, file="precip.iso", status="old")
+      read (119,*,iostat=eof) titldum
+      if (eof < 0) then
+        close (119)
+        write (*,'(a)') "  Isotope tracking: disabled (precip.iso is empty)"
+        write (9003,'(a)') "  Isotope tracking: disabled (precip.iso is empty)"
+        return
+      end if
+      read (119,*,iostat=eof) iso_on, num_iso, iso_k, iso_x,  &
+                               iso_min_comp_rain, iso_min_comp_gw
+      if (eof < 0 .or. iso_on == 0) then
+        close (119)
+        iso_on = 0
+        write (*,'(a)') "  Isotope tracking: disabled (iso_on = 0 in precip.iso)"
+        write (9003,'(a)') "  Isotope tracking: disabled (iso_on = 0 in precip.iso)"
+        return
+      end if
 
       mhru = sp_ob%hru
       maqu = mhru               !! one per-HRU aquifer proxy
@@ -75,22 +99,6 @@
       allocate (iso_comp_gw_n(mhru),   source = 0.)
       allocate (iso_comp_a(mhru),      source = 0.)
       allocate (iso_comp_b(mhru),      source = 0.)
-
-      !! read precip.iso if it exists
-      inquire (file="precip.iso", exist=i_exist)
-      if (.not. i_exist) return
-
-      open (unit=119, file="precip.iso", status="old")
-      read (119,*,iostat=eof) titldum
-      if (eof < 0) then
-        close (119); return
-      endif
-      !! second line: global parameters
-      read (119,*,iostat=eof) iso_on, num_iso, iso_k, iso_x,  &
-                               iso_min_comp_rain, iso_min_comp_gw
-      if (eof < 0) then
-        close (119); return
-      endif
 
       !! read monthly delta values per weather station
       do iwst = 1, mwst
@@ -132,6 +140,11 @@
           end do
         end do
       end if
+
+      write (*,'(a,i2,a)') "  Isotope tracking: enabled (", num_iso, &
+                            " isotope(s) loaded from precip.iso)"
+      write (9003,'(a,i2,a)') "  Isotope tracking: enabled (", num_iso, &
+                               " isotope(s) loaded from precip.iso)"
 
       return
       end subroutine iso_init

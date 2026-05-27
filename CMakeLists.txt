@@ -188,8 +188,8 @@ add_executable(test_isotope_mixing
   ${PROJECT_SOURCE_DIR}/src/isotope_mixing.f90)
 # CMAKE_Fortran_FLAGS already carries fdialect; only add build-type flags
 target_compile_options(test_isotope_mixing PRIVATE
-  "$<$<CONFIG:Debug>:${fdebug}>"
-  "$<$<CONFIG:Release>:${frelease}>")
+  "$<$<CONFIG:Debug>:SHELL:${fdebug}>"
+  "$<$<CONFIG:Release>:SHELL:${frelease}>")
 add_test(NAME isotope_mixing COMMAND test_isotope_mixing)
 
 # 2. Python math test: fractionation / hydrograph separation / precip.iso parsing
