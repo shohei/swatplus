@@ -48,11 +48,19 @@ if (UNIX)
         set(FFC             "ifx")
         link_libraries("-static")
     elseif(CMAKE_Fortran_COMPILER_ID MATCHES GNU)
-        set(fdialect        "-cpp -fcheck=all -ffpe-trap=invalid,zero,overflow,underflow -fimplicit-none -ffree-line-length-none -fbacktrace -finit-local-zero -fno-unsafe-math-optimizations -frounding-math -fsignaling-nans")
-        set(fdebug          "-Wall")
-        set(frelease        "-O")
+        if(APPLE AND CMAKE_SYSTEM_PROCESSOR MATCHES "arm64|aarch64")
+            # macOS ARM64: -ffpe-trap と -fsignaling-nans は ARM64 の FPU 実装の違いにより
+            # SIGFPE ではなく SIGILL を発生させるため除外。-fcheck=all も Release では不要。
+            set(fdialect    "-cpp -fimplicit-none -ffree-line-length-none -fbacktrace -finit-local-zero")
+            set(fdebug      "-Wall -fcheck=all")
+            set(frelease    "-O2")
+        else()
+            set(fdialect    "-cpp -fcheck=all -ffpe-trap=invalid,zero,overflow,underflow -fimplicit-none -ffree-line-length-none -fbacktrace -finit-local-zero -fno-unsafe-math-optimizations -frounding-math -fsignaling-nans")
+            set(fdebug      "-Wall")
+            set(frelease    "-O")
+        endif()
         set(FFC             "gnu")
-        
+
         if(NOT APPLE)
             # Check if the OS is not Arch Linux or is not based on Arch Linux and is not Fedpra based
             # For non-Arch and non-FedoraLinux based systems using gfortran (GNU), set the link_library static flag to build a static executable.")
@@ -170,6 +178,26 @@ set(aerr "1e-8")
 
 add_test(Ames_sub1   ${Python3_EXECUTABLE} ${spcheck} ctest ${exe_path} ${ref_dir}/Ames_sub1 ${test_dir} --abserr ${aerr} --relerr ${rerr})
 # add_test(Ithaca_sub6 python3 ${check_py} ${exe_path} ${ref_dir}/Ithaca_sub6 ${test_dir} ${aerr} ${rerr})
+
+# ---------------------------------------------------------------------------
+# Isotope unit tests (no SWAT+ run required)
+# ---------------------------------------------------------------------------
+# 1. Fortran unit test: iso_mix_binary / iso_mix_array / iso_mix_multi
+add_executable(test_isotope_mixing
+  ${PROJECT_SOURCE_DIR}/test/test_isotope_mixing.f90
+  ${PROJECT_SOURCE_DIR}/src/isotope_mixing.f90)
+# CMAKE_Fortran_FLAGS already carries fdialect; only add build-type flags
+target_compile_options(test_isotope_mixing PRIVATE
+  "$<$<CONFIG:Debug>:${fdebug}>"
+  "$<$<CONFIG:Release>:${frelease}>")
+add_test(NAME isotope_mixing COMMAND test_isotope_mixing)
+
+# 2. Python math test: fractionation / hydrograph separation / precip.iso parsing
+if(Python3_FOUND)
+  add_test(NAME isotope_math
+    COMMAND ${Python3_EXECUTABLE}
+            ${PROJECT_SOURCE_DIR}/test/test_isotope_math.py)
+endif()
 
 
 #############################################################################
